@@ -140,12 +140,18 @@
   main {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(1, 1fr);
     gap: 6px;
     padding-top: 10px;
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 480px) {
+    main {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 900px) {
     main {
       grid-template-columns: repeat(4, 1fr);
       gap: 10px;
@@ -159,13 +165,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    height: 230px;
-  }
-
-  @media (min-width: 640px) {
-    .restaurant-card {
-      height: 300px;
-    }
   }
 
   .restaurant-card.disabled {
@@ -183,6 +182,7 @@
     justify-content: space-between;
     gap: 6px;
     flex-shrink: 0;
+    transition: background-color 0.4s ease, color 0.4s ease;
   }
 
   @media (min-width: 640px) {
@@ -192,10 +192,31 @@
     }
   }
 
+  /* Header background reflects the oldest relevant order's wait-time
+     status — same colours as the time chips. */
+  .restaurant-header.idle {
+    background: var(--box-idle);
+    color: var(--box-idle-ink);
+    border-bottom-color: transparent;
+  }
+
+  .restaurant-header.warn {
+    background: var(--box-warn);
+    color: var(--box-warn-ink);
+    border-bottom-color: transparent;
+  }
+
+  .restaurant-header.crit {
+    background: var(--box-crit);
+    color: var(--box-crit-ink);
+    border-bottom-color: transparent;
+  }
+
   .restaurant-header .count {
     font-size: 0.7rem;
     font-weight: 500;
-    color: var(--ink-soft);
+    color: inherit;
+    opacity: 0.75;
   }
 
   @media (min-width: 640px) {
@@ -210,20 +231,20 @@
     display: flex;
     flex-direction: column;
     padding: 6px 8px;
-    gap: 4px;
+    gap: 8px;
   }
 
   @media (min-width: 640px) {
     .order-rows {
       padding: 8px 12px;
-      gap: 6px;
+      gap: 10px;
     }
   }
 
   .line-section {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
   }
 
   .line-section.ready {
@@ -232,7 +253,7 @@
 
   .line-section.cooking {
     flex: 1;
-    padding-top: 4px;
+    padding-top: 2px;
   }
 
   .time-row {
@@ -299,6 +320,16 @@
     opacity: 0.7;
   }
 
+  /* Used for the "ready" row when showServed is off for a restaurant:
+     real times are still shown, but with no colour coding or pulse —
+     same muted look as a disabled/not-connected box. */
+  .time-chip.muted {
+    background: var(--line);
+    color: var(--ink-soft);
+    border-color: transparent;
+    animation: none;
+  }
+
   .time-chip .order-time {
     font-family: "Poppins", ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
@@ -310,6 +341,29 @@
     .time-chip .order-time {
       font-size: 0.7rem;
     }
+  }
+
+  .bucket-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px 10px;
+  }
+
+  .bucket-cell {
+    font-size: 0.6rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 640px) {
+    .bucket-cell {
+      font-size: 0.66rem;
+    }
+  }
+
+  .bucket-grid.muted .bucket-cell {
+    opacity: 0.6;
   }
 
   .empty-message {
@@ -343,7 +397,9 @@
 <main id="restaurantGrid"></main>
 </div>
 
-<div class="bottom-bar">Oppdateres automatisk hvert 15. sekund</div>
+<div class="bottom-bar">Viser de 3 ordrene med lengst ventetid. Oppdateres automatisk hvert 15. sekund.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
 <script>
   // ============================================================
@@ -355,21 +411,21 @@
   // disabled (no requests will be sent for them) until you fill in
   // their real restaurantId/company and flip `enabled` to true.
   //
-  // `showServed` controls whether orders at production step 30 (fully
-  // cooked, ready to serve) are shown at all — this is the top line
-  // in each box, computed by getOldestReady(). It's also sent as
-  // `includeFinished` to the API. Truly "Finished" (already served)
-  // orders are always excluded, regardless of this flag. Only Arme
-  // Ridders has showServed on for now.
+  // `showServed` controls whether the "ready" (production step 30)
+  // line is shown in colour: when true, its chips get the normal
+  // idle/warn/crit colours and the header count includes it. When
+  // false, the real wait times for ready orders are still shown, but
+  // greyed out (no colour, no pulse) and excluded from the header
+  // count — same treatment as a disabled/not-connected box.
   const RESTAURANTS = [
-    { id: "ARME",  company: "TUS", name: "Arme Ridders", enabled: true,  showServed: true },
-    { id: "REST2", company: "TUS", name: "Restaurant 2", enabled: false, showServed: false },
-    { id: "REST3", company: "TUS", name: "Restaurant 3", enabled: false, showServed: false },
-    { id: "REST4", company: "TUS", name: "Restaurant 4", enabled: false, showServed: false },
-    { id: "REST5", company: "TUS", name: "Restaurant 5", enabled: false, showServed: false },
-    { id: "REST6", company: "TUS", name: "Restaurant 6", enabled: false, showServed: false },
-    { id: "REST7", company: "TUS", name: "Restaurant 7", enabled: false, showServed: false },
-    { id: "REST8", company: "TUS", name: "Restaurant 8", enabled: false, showServed: false },
+    { id: "ARME",  company: "TUS", name: "AR", enabled: true,  showServed: false },
+    { id: "MORGAN", company: "TUS", name: "MKS", enabled: true, showServed: false },
+    { id: "POLSER", company: "TUS", name: "PR", enabled: true, showServed: false },
+    { id: "PIZZA", company: "TUS", name: "PV", enabled: true, showServed: true },
+    { id: "MIDGARD", company: "TUS", name: "MAF", enabled: true, showServed: false },
+    { id: "WHAREKAI", company: "TUS", name: "WST", enabled: true, showServed: false },
+    { id: "EXPLORER", company: "TUS", name: "ESR", enabled: true, showServed: true },
+    { id: "ROCK", company: "TUS", name: "RB", enabled: true, showServed: false },
   ];
 
   const LAST_SERVER_ID = "212";
@@ -385,9 +441,92 @@
   const WARN_MINUTES = 30;
   const CRIT_MINUTES = 45;
 
-  const TENANT_ID = prompt("TENANT ID");
-  const CLIENT_ID = prompt("CLIENT ID");
-  const CLIENT_SECRET = prompt("CLIENT SECRET");
+  // Orders older than this (in minutes) are treated as stale/stuck
+  // data and left out of every count, bucket, and displayed time.
+  const IGNORE_MINUTES = 720;
+
+  // Wait-time buckets shown under each caption, as a 3-row x 2-column
+  // grid: [<10, <20, <30, <40, <50, >50] (minutes). Each threshold is
+  // a "less than" cumulative count except the last, which is ">= 50".
+  const BUCKET_THRESHOLDS = [10, 20, 30, 40, 50];
+
+
+  // encryption things
+const encryptedData = {
+  salt: "1y6d7BdM7QCRMB4FCwP7Sg==",
+  iv: "+tW1BktzoZgKbpPs",
+  ciphertext: "cBVwaSFim+dx6CygnLGABYgSfoujl5jjrzOeGws1hQ7G/tqN11WkfleOhXk1cP5gi2BkCp51XXiF/A4GgP7JFW2NyzbhuHeVDTxKMx3viex3UL4u3FrXDbr0eyolqJS2NamvjfVFMXTmZjNFLTXhLqYGCRh6n+MuG19UMHoE/aEe/g=="
+};
+
+async function decryptToken(password) {
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    const fromBase64 = str =>
+        Uint8Array.from(atob(str), c => c.charCodeAt(0));
+
+    const salt = fromBase64(encryptedData.salt);
+    const iv = fromBase64(encryptedData.iv);
+    const ciphertext = fromBase64(encryptedData.ciphertext);
+
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+    );
+
+    const key = await crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt,
+            iterations: 100000,
+            hash: "SHA-256"
+        },
+        keyMaterial,
+        {
+            name: "AES-GCM",
+            length: 256
+        },
+        false,
+        ["decrypt"]
+    );
+
+    const decrypted = await crypto.subtle.decrypt(
+        {
+            name: "AES-GCM",
+            iv
+        },
+        key,
+        ciphertext
+    );
+
+    return dec.decode(decrypted);
+}
+
+(async () => {
+    let token = localStorage.getItem("token");
+
+    if (!token) {
+        const password = prompt("Password:");
+
+        try {
+            token = await decryptToken(password);
+            localStorage.setItem("token", token);
+        } catch {
+            alert("Wrong password");
+            return;
+        }
+    }
+
+    console.log("Token:", token);
+
+
+
+  const TENANT_ID = token.split("^")[0];
+  const CLIENT_ID = token.split("^")[1];
+  const CLIENT_SECRET = token.split("^")[2];
   const SCOPE = "https://api.businesscentral.dynamics.com/.default";
 
   const TOKEN_URL = `https://corsproxy.npretail.app/corsproxy/?apiurl=https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
@@ -432,18 +571,21 @@
   }
 
   function filterAndSort(orders, predicate) {
+    const ignoreCutoffMs = IGNORE_MINUTES * 60 * 1000;
     return orders
       .filter(order => order.orderStatus !== ORDER_STATUS_FINISHED)
       .filter(predicate)
       .map(order => ({ order, ts: getOrderTimestampMs(order) }))
       .filter(o => o.ts !== null)
+      .filter(o => (Date.now() - o.ts) <= ignoreCutoffMs) // drop stale/stuck orders from everywhere
       .sort((a, b) => a.ts - b.ts); // oldest (smallest timestamp) first
   }
 
   // Orders at production step 30 (fully cooked, ready to serve).
-  // Only computed at all when showServed is on for that restaurant.
-  function getReadyOrders(orders, showServed) {
-    if (!showServed) return [];
+  // Always computed regardless of showServed — the toggle only
+  // affects how this line is *displayed* (colour vs. greyed out),
+  // not whether the data is fetched/shown at all.
+  function getReadyOrders(orders) {
     return filterAndSort(orders, order => getOrderProductionStep(order) === PRODUCTION_STEP_READY);
   }
 
@@ -455,6 +597,17 @@
       return step !== null && step < PRODUCTION_STEP_READY;
     });
   }
+
+  // Buckets entries (already filtered/sorted by filterAndSort) into
+  // the 6 wait-time buckets: [<10, <20, <30, <40, <50, >=50] minutes.
+  function computeBuckets(entries) {
+    const minutesList = entries.map(e => (Date.now() - e.ts) / 60000);
+    const counts = BUCKET_THRESHOLDS.map(t => minutesList.filter(m => m < t).length);
+    const overCount = minutesList.filter(m => m >= BUCKET_THRESHOLDS[BUCKET_THRESHOLDS.length - 1]).length;
+    return [...counts, overCount];
+  }
+
+  const BUCKET_LABELS = ["<10 min", "<20 min", "<30 min", "<40 min", "<50 min", ">50 min"];
 
   // ============================================================
   // AUTH
@@ -503,7 +656,7 @@
     const payload = {
       restaurantId: restaurant.id,
       stationId: null,
-      includeFinished: !!restaurant.showServed,
+      includeFinished: false,
       startingFrom: null,
       lastServerId: LAST_SERVER_ID,
     };
@@ -547,6 +700,7 @@
     cookingOrders: [], // [{ order, ts }] — production step under 30, full list
     error: null,
     card: null,
+    headerEl: null,
     countEl: null,
     rowsEl: null,
   }));
@@ -574,6 +728,7 @@
       gridEl.appendChild(card);
 
       rs.card = card;
+      rs.headerEl = header;
       rs.countEl = countEl;
       rs.rowsEl = rowsEl;
     });
@@ -592,7 +747,9 @@
     return "idle";
   }
 
-  function buildTimeRow(entries) {
+  // `muted` forces the grey/no-colour/no-pulse look regardless of
+  // wait time — used for the ready line when showServed is off.
+  function buildTimeRow(entries, muted) {
     const row = document.createElement("div");
     row.className = "time-row";
 
@@ -605,7 +762,7 @@
         chip.textContent = "–:--";
       } else {
         const seconds = Math.max(0, (Date.now() - entry.ts) / 1000);
-        chip.className = "time-chip " + classify(seconds);
+        chip.className = "time-chip " + (muted ? "muted" : classify(seconds));
         const timeEl = document.createElement("span");
         timeEl.className = "order-time";
         timeEl.textContent = formatMinSec(seconds);
@@ -618,8 +775,29 @@
     return row;
   }
 
+  function buildBucketGrid(entries, muted) {
+    const grid = document.createElement("div");
+    grid.className = "bucket-grid" + (muted ? " muted" : "");
+
+    const counts = computeBuckets(entries);
+    counts.forEach((count, i) => {
+      const cell = document.createElement("div");
+      cell.className = "bucket-cell";
+      cell.textContent = count + " " + BUCKET_LABELS[i];
+      grid.appendChild(cell);
+    });
+
+    return grid;
+  }
+
+  function getOldestEntry(entries) {
+    if (entries.length === 0) return null;
+    return entries.reduce((oldest, e) => (!oldest || e.ts < oldest.ts) ? e : oldest, null);
+  }
+
   function renderRestaurant(rs) {
     rs.rowsEl.innerHTML = "";
+    rs.headerEl.className = "restaurant-header";
 
     if (!rs.config.enabled) {
       rs.countEl.textContent = "ikke tilkoblet";
@@ -641,27 +819,41 @@
 
     const readyCount = rs.readyOrders.length;
     const cookingCount = rs.cookingOrders.length;
+    const showServed = !!rs.config.showServed;
 
-    // Total shown next to the restaurant name automatically respects
-    // showServed: readyCount is always 0 when it's off, so this ends
-    // up being "cooking only" vs "ready + cooking" without extra logic.
-    rs.countEl.textContent = (readyCount + cookingCount) + " ordre";
+    // Header count: only include the ready line when showServed is on
+    // for this restaurant — matches the toggle's original intent even
+    // though the ready times are now always rendered (just greyed out
+    // when showServed is off).
+    rs.countEl.textContent = (showServed ? (readyCount + cookingCount) : cookingCount) + " ordre";
+
+    // Header background reflects the oldest order among the relevant
+    // set: only "in production" orders when showServed is off, both
+    // ready + in production when it's on.
+    const headerPool = showServed ? [...rs.readyOrders, ...rs.cookingOrders] : rs.cookingOrders;
+    const oldestForHeader = getOldestEntry(headerPool);
+    if (oldestForHeader) {
+      const seconds = Math.max(0, (Date.now() - oldestForHeader.ts) / 1000);
+      rs.headerEl.classList.add(classify(seconds));
+    }
 
     const readySection = document.createElement("div");
     readySection.className = "line-section ready";
-    readySection.appendChild(buildTimeRow(rs.readyOrders.slice(0, ORDERS_SHOWN_PER_RESTAURANT)));
+    readySection.appendChild(buildTimeRow(rs.readyOrders.slice(0, ORDERS_SHOWN_PER_RESTAURANT), !showServed));
     const readyCaption = document.createElement("div");
     readyCaption.className = "line-caption";
     readyCaption.textContent = readyCount + " ordre klare for servering";
     readySection.appendChild(readyCaption);
+    readySection.appendChild(buildBucketGrid(rs.readyOrders, !showServed));
 
     const cookingSection = document.createElement("div");
     cookingSection.className = "line-section cooking";
-    cookingSection.appendChild(buildTimeRow(rs.cookingOrders.slice(0, ORDERS_SHOWN_PER_RESTAURANT)));
+    cookingSection.appendChild(buildTimeRow(rs.cookingOrders.slice(0, ORDERS_SHOWN_PER_RESTAURANT), false));
     const cookingCaption = document.createElement("div");
     cookingCaption.className = "line-caption";
     cookingCaption.textContent = cookingCount + " ordre i produksjon";
     cookingSection.appendChild(cookingCaption);
+    cookingSection.appendChild(buildBucketGrid(rs.cookingOrders, false));
 
     rs.rowsEl.appendChild(readySection);
     rs.rowsEl.appendChild(cookingSection);
@@ -683,7 +875,7 @@
 
       try {
         const orders = await getOrders(rs.config);
-        rs.readyOrders = getReadyOrders(orders, rs.config.showServed);
+        rs.readyOrders = getReadyOrders(orders);
         rs.cookingOrders = getCookingOrders(orders);
         rs.error = null;
       } catch (err) {
@@ -701,6 +893,12 @@
   fetchAllRestaurants();
   setInterval(fetchAllRestaurants, FETCH_INTERVAL_MS);
   setInterval(renderAll, TICK_INTERVAL_MS);
+
+
+
+})();
+
+
 </script>
 
 </body>
