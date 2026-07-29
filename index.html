@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" name="robots" content="noindex, nofollow">
+<title>Ordre-ventetid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #FAF6F0;
+    --ink: #33302C;
+    --ink-soft: #8A8378;
+    --line: #E4DED3;
+    --box-idle: oklch(60.9% 0.192 165deg);
+    --box-idle-ink: #FFFFFF;
+    --box-warn: oklch(83.7% 0.184 75deg);
+    --box-warn-ink: #3A2E00;
+    --box-crit: oklch(61.5% 0.189 25deg);
+    --box-crit-ink: #FFFFFF;
+    --accent: #4A7862;
+    --bar-bg: oklch(.587 .193 252);
+    --bar-ink: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Poppins", -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    height: 100%;
+  }
+
+  body {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page {
+    padding: 12px 10px 20px;
+    flex: 1;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    width: 100%;
+    background: var(--bar-bg);
+    color: var(--bar-ink);
+    padding: 10px 12px;
+  }
+
+  @media (min-width: 640px) {
+    .top-bar { padding: 12px 16px; }
+  }
+
+  .bottom-bar {
+    width: 100%;
+    background: var(--bar-bg);
+    color: var(--bar-ink);
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 0.62rem;
+  }
+
+  @media (min-width: 640px) {
+    .bottom-bar {
+      padding: 10px 16px;
+      font-size: 0.72rem;
+    }
+  }
+
+  .app-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--bar-ink);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 640px) {
+    .app-title { font-size: 1rem; }
+  }
+
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  @media (min-width: 640px) {
+    .legend { gap: 18px; }
+  }
+
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  @media (min-width: 640px) {
+    .swatch { font-size: 0.8rem; gap: 6px; }
+  }
+
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 0;
+    display: inline-block;
+  }
+
+  .dot.idle { background: var(--box-idle); border: 1px solid rgba(255, 255, 255, 0.6); }
+  .dot.warn { background: var(--box-warn); }
+  .dot.crit { background: var(--box-crit); }
+
+  .status {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 640px) {
+    .status { font-size: 0.75rem; }
+  }
+
+  main {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  @media (min-width: 640px) {
+    main {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+  }
+
+  .restaurant-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 230px;
+  }
+
+  @media (min-width: 640px) {
+    .restaurant-card {
+      height: 300px;
+    }
+  }
+
+  .restaurant-card.disabled {
+    opacity: 0.55;
+  }
+
+  .restaurant-header {
+    padding: 8px 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 640px) {
+    .restaurant-header {
+      padding: 8px 10px;
+      font-size: 0.88rem;
+    }
+  }
+
+  .restaurant-header .count {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+
+  @media (min-width: 640px) {
+    .restaurant-header .count {
+      font-size: 0.72rem;
+    }
+  }
+
+  .order-rows {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  @media (min-width: 640px) {
+    .order-rows {
+      padding: 8px 12px;
+      gap: 6px;
+    }
+  }
+
+  .line-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .line-section.ready {
+    flex: 0 0 auto;
+  }
+
+  .line-section.cooking {
+    flex: 1;
+    padding-top: 4px;
+  }
+
+  .time-row {
+    display: flex;
+    gap: 4px;
+  }
+
+  @media (min-width: 640px) {
+    .time-row {
+      gap: 6px;
+    }
+  }
+
+  .line-caption {
+    font-size: 0.66rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (min-width: 640px) {
+    .line-caption {
+      font-size: 0.7rem;
+    }
+  }
+
+  .time-chip {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--box-idle);
+    color: var(--box-idle-ink);
+    border: 1px solid transparent;
+    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+
+  @media (min-width: 640px) {
+    .time-chip {
+      width: 46px;
+      height: 26px;
+    }
+  }
+
+  .time-chip.warn {
+    background: var(--box-warn);
+    color: var(--box-warn-ink);
+    border-color: transparent;
+  }
+
+  .time-chip.crit {
+    background: var(--box-crit);
+    color: var(--box-crit-ink);
+    border-color: transparent;
+    animation: pulse 1.0s ease-in-out infinite;
+  }
+
+  .time-chip.empty {
+    background: var(--line);
+    color: var(--ink-soft);
+    opacity: 0.7;
+  }
+
+  .time-chip .order-time {
+    font-family: "Poppins", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.68rem;
+    font-weight: 500;
+  }
+
+  @media (min-width: 640px) {
+    .time-chip .order-time {
+      font-size: 0.7rem;
+    }
+  }
+
+  .empty-message {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 oklch(61.5% 0.189 25deg / 0); }
+    50% { box-shadow: 0 0 0 6px oklch(61.5% 0.189 25deg / 0.2); }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="app-title">Ordre-ventetid — alle restauranter</div>
+
+  <div class="legend">
+    <span class="swatch"><span class="dot idle"></span>under <span id="warnLabel1"></span> min</span>
+    <span class="swatch"><span class="dot warn"></span><span id="warnLabel2"></span>–<span id="critLabel"></span> min</span>
+    <span class="swatch"><span class="dot crit"></span>over <span id="critLabel2"></span> min</span>
+  </div>
+
+  <div class="status" id="statusLine">Kobler til...</div>
+</div>
+
+<div class="page">
+<main id="restaurantGrid"></main>
+</div>
+
+<div class="bottom-bar">Oppdateres automatisk hvert 15. sekund</div>
+
+<script>
+  // ============================================================
+  // CONFIG
+  // ============================================================
+  // One entry per restaurant. "ARME" is the one we have a real
+  // restaurantId/company for, so it's the only one marked
+  // `enabled: true`. The other 7 are placeholders — leave them
+  // disabled (no requests will be sent for them) until you fill in
+  // their real restaurantId/company and flip `enabled` to true.
+  //
+  // `showServed` controls whether orders at production step 30 (fully
+  // cooked, ready to serve) are shown at all — this is the top line
+  // in each box, computed by getOldestReady(). It's also sent as
+  // `includeFinished` to the API. Truly "Finished" (already served)
+  // orders are always excluded, regardless of this flag. Only Arme
+  // Ridders has showServed on for now.
+  const RESTAURANTS = [
+    { id: "ARME",  company: "TUS", name: "Arme Ridders", enabled: true,  showServed: true },
+    { id: "REST2", company: "TUS", name: "Restaurant 2", enabled: false, showServed: false },
+    { id: "REST3", company: "TUS", name: "Restaurant 3", enabled: false, showServed: false },
+    { id: "REST4", company: "TUS", name: "Restaurant 4", enabled: false, showServed: false },
+    { id: "REST5", company: "TUS", name: "Restaurant 5", enabled: false, showServed: false },
+    { id: "REST6", company: "TUS", name: "Restaurant 6", enabled: false, showServed: false },
+    { id: "REST7", company: "TUS", name: "Restaurant 7", enabled: false, showServed: false },
+    { id: "REST8", company: "TUS", name: "Restaurant 8", enabled: false, showServed: false },
+  ];
+
+  const LAST_SERVER_ID = "212";
+  const ORDERS_SHOWN_PER_RESTAURANT = 3;
+
+  // How often to re-fetch order lists from the API (ms) and how
+  // often to just re-render the on-screen clocks (ms).
+  const FETCH_INTERVAL_MS = 15000;
+  const TICK_INTERVAL_MS = 1000;
+
+  // Colour thresholds, in minutes of wait time.
+  // idle (grey): under 30 min, warn (yellow): 30-45 min, crit (red): over 45 min.
+  const WARN_MINUTES = 30;
+  const CRIT_MINUTES = 45;
+
+  const TENANT_ID = prompt("TENANT ID");
+  const CLIENT_ID = prompt("CLIENT ID");
+  const CLIENT_SECRET = prompt("CLIENT SECRET");
+  const SCOPE = "https://api.businesscentral.dynamics.com/.default";
+
+  const TOKEN_URL = `https://corsproxy.npretail.app/corsproxy/?apiurl=https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
+  const REFERRER = "https://kds.npretail.io/";
+
+  function refreshUrlFor(company) {
+    return `https://api.businesscentral.dynamics.com/v2.0/${TENANT_ID}/Norway-PROD/ODataV4/KDS_RefreshKDSDataV2?company=${company}`;
+  }
+
+  // Confirmed from a real KDS_RefreshKDSDataV2 response: the order's
+  // creation time is in `orderCreatedDT`. Kept a couple of fallback
+  // names in case a future response uses something slightly different.
+  const ORDER_TIME_FIELDS = ["orderCreatedDT", "orderCreatedDateTime", "orderDateTime", "orderTime"];
+
+  function getOrderTimestampMs(order) {
+    for (const field of ORDER_TIME_FIELDS) {
+      if (order[field]) {
+        const t = new Date(order[field]).getTime();
+        if (!isNaN(t)) return t;
+      }
+    }
+    return null;
+  }
+
+  // Order-level statuses seen from the real API:
+  //   10 = "Ready for Serving" (food is done, waiting to be handed out)
+  //   50 = "Finished" (already served — orderFinishedDT is set)
+  //
+  // Finished orders are NEVER shown, regardless of the showServed
+  // toggle.
+  const ORDER_STATUS_FINISHED = 50;
+
+  // An order's production step is the least-advanced productionStatus
+  // across its kitchenRequests — i.e. it isn't "step 30" (ready) until
+  // every item has reached productionStatus 30.
+  const PRODUCTION_STEP_READY = 30;
+
+  function getOrderProductionStep(order) {
+    const requests = order.kitchenRequests || [];
+    if (requests.length === 0) return null;
+    return Math.min(...requests.map(r => r.productionStatus));
+  }
+
+  function filterAndSort(orders, predicate) {
+    return orders
+      .filter(order => order.orderStatus !== ORDER_STATUS_FINISHED)
+      .filter(predicate)
+      .map(order => ({ order, ts: getOrderTimestampMs(order) }))
+      .filter(o => o.ts !== null)
+      .sort((a, b) => a.ts - b.ts); // oldest (smallest timestamp) first
+  }
+
+  // Orders at production step 30 (fully cooked, ready to serve).
+  // Only computed at all when showServed is on for that restaurant.
+  function getReadyOrders(orders, showServed) {
+    if (!showServed) return [];
+    return filterAndSort(orders, order => getOrderProductionStep(order) === PRODUCTION_STEP_READY);
+  }
+
+  // Orders still below production step 30 (still being prepared).
+  // Always computed, not gated by showServed.
+  function getCookingOrders(orders) {
+    return filterAndSort(orders, order => {
+      const step = getOrderProductionStep(order);
+      return step !== null && step < PRODUCTION_STEP_READY;
+    });
+  }
+
+  // ============================================================
+  // AUTH
+  // ============================================================
+  let accessToken = null;
+  let tokenExpiresAt = 0;
+
+  async function getAccessToken() {
+    if (accessToken && Date.now() < tokenExpiresAt) return accessToken;
+
+    const body = new URLSearchParams({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: "client_credentials",
+      scope: SCOPE,
+    });
+
+    const response = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "accept": "application/json, text/plain, */*",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      referrer: REFERRER,
+      mode: "cors",
+      credentials: "omit",
+      body: body.toString(),
+    });
+
+    if (!response.ok) throw new Error(`Token request failed: ${response.status}`);
+    const data = await response.json();
+    if (!data.access_token) throw new Error("Token response had no access_token");
+
+    accessToken = data.access_token;
+    // Refresh a couple minutes early rather than waiting for a 401.
+    const expiresInMs = (data.expires_in ? data.expires_in : 3600) * 1000;
+    tokenExpiresAt = Date.now() + expiresInMs - 2 * 60 * 1000;
+    return accessToken;
+  }
+
+  // ============================================================
+  // ORDER FETCHING
+  // ============================================================
+  async function getOrders(restaurant) {
+    const token = await getAccessToken();
+    const payload = {
+      restaurantId: restaurant.id,
+      stationId: null,
+      includeFinished: !!restaurant.showServed,
+      startingFrom: null,
+      lastServerId: LAST_SERVER_ID,
+    };
+
+    const response = await fetch(refreshUrlFor(restaurant.company), {
+      method: "POST",
+      headers: {
+        "accept": "application/json, text/plain, */*",
+        "authorization": `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      referrer: REFERRER,
+      mode: "cors",
+      credentials: "omit",
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) throw new Error(`Get orders failed: ${response.status}`);
+    const result = await response.json();
+    // result.value is a JSON string, not an object — needs a second parse.
+    const data = JSON.parse(result.value);
+    return data.orders || [];
+  }
+
+  // ============================================================
+  // RENDERING
+  // ============================================================
+  const gridEl = document.getElementById("restaurantGrid");
+  const statusEl = document.getElementById("statusLine");
+
+  document.getElementById("warnLabel1").textContent = WARN_MINUTES;
+  document.getElementById("warnLabel2").textContent = WARN_MINUTES;
+  document.getElementById("critLabel").textContent = CRIT_MINUTES;
+  document.getElementById("critLabel2").textContent = CRIT_MINUTES;
+
+  // In-memory state: one entry per restaurant, holding its current
+  // full ready/cooking order lists (with timestamps) and DOM refs.
+  const restaurantState = RESTAURANTS.map(r => ({
+    config: r,
+    readyOrders: [],   // [{ order, ts }] — production step 30, full list
+    cookingOrders: [], // [{ order, ts }] — production step under 30, full list
+    error: null,
+    card: null,
+    countEl: null,
+    rowsEl: null,
+  }));
+
+  function buildCards() {
+    gridEl.innerHTML = "";
+    restaurantState.forEach(rs => {
+      const card = document.createElement("div");
+      card.className = "restaurant-card" + (rs.config.enabled ? "" : " disabled");
+
+      const header = document.createElement("div");
+      header.className = "restaurant-header";
+      const nameEl = document.createElement("span");
+      nameEl.textContent = rs.config.name;
+      const countEl = document.createElement("span");
+      countEl.className = "count";
+      header.appendChild(nameEl);
+      header.appendChild(countEl);
+
+      const rowsEl = document.createElement("div");
+      rowsEl.className = "order-rows";
+
+      card.appendChild(header);
+      card.appendChild(rowsEl);
+      gridEl.appendChild(card);
+
+      rs.card = card;
+      rs.countEl = countEl;
+      rs.rowsEl = rowsEl;
+    });
+  }
+
+  function formatMinSec(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = Math.floor(totalSeconds % 60);
+    return m + ":" + String(s).padStart(2, "0");
+  }
+
+  function classify(totalSeconds) {
+    const minutes = totalSeconds / 60;
+    if (minutes >= CRIT_MINUTES) return "crit";
+    if (minutes >= WARN_MINUTES) return "warn";
+    return "idle";
+  }
+
+  function buildTimeRow(entries) {
+    const row = document.createElement("div");
+    row.className = "time-row";
+
+    for (let i = 0; i < ORDERS_SHOWN_PER_RESTAURANT; i++) {
+      const entry = entries[i];
+      const chip = document.createElement("div");
+
+      if (!entry) {
+        chip.className = "time-chip empty";
+        chip.textContent = "–:--";
+      } else {
+        const seconds = Math.max(0, (Date.now() - entry.ts) / 1000);
+        chip.className = "time-chip " + classify(seconds);
+        const timeEl = document.createElement("span");
+        timeEl.className = "order-time";
+        timeEl.textContent = formatMinSec(seconds);
+        chip.appendChild(timeEl);
+      }
+
+      row.appendChild(chip);
+    }
+
+    return row;
+  }
+
+  function renderRestaurant(rs) {
+    rs.rowsEl.innerHTML = "";
+
+    if (!rs.config.enabled) {
+      rs.countEl.textContent = "ikke tilkoblet";
+      const msg = document.createElement("div");
+      msg.className = "empty-message";
+      msg.textContent = "Venter på restaurantId/company";
+      rs.rowsEl.appendChild(msg);
+      return;
+    }
+
+    if (rs.error) {
+      rs.countEl.textContent = "feil";
+      const msg = document.createElement("div");
+      msg.className = "empty-message";
+      msg.textContent = "Kunne ikke hente ordre";
+      rs.rowsEl.appendChild(msg);
+      return;
+    }
+
+    const readyCount = rs.readyOrders.length;
+    const cookingCount = rs.cookingOrders.length;
+
+    // Total shown next to the restaurant name automatically respects
+    // showServed: readyCount is always 0 when it's off, so this ends
+    // up being "cooking only" vs "ready + cooking" without extra logic.
+    rs.countEl.textContent = (readyCount + cookingCount) + " ordre";
+
+    const readySection = document.createElement("div");
+    readySection.className = "line-section ready";
+    readySection.appendChild(buildTimeRow(rs.readyOrders.slice(0, ORDERS_SHOWN_PER_RESTAURANT)));
+    const readyCaption = document.createElement("div");
+    readyCaption.className = "line-caption";
+    readyCaption.textContent = readyCount + " ordre klare for servering";
+    readySection.appendChild(readyCaption);
+
+    const cookingSection = document.createElement("div");
+    cookingSection.className = "line-section cooking";
+    cookingSection.appendChild(buildTimeRow(rs.cookingOrders.slice(0, ORDERS_SHOWN_PER_RESTAURANT)));
+    const cookingCaption = document.createElement("div");
+    cookingCaption.className = "line-caption";
+    cookingCaption.textContent = cookingCount + " ordre i produksjon";
+    cookingSection.appendChild(cookingCaption);
+
+    rs.rowsEl.appendChild(readySection);
+    rs.rowsEl.appendChild(cookingSection);
+  }
+
+  function renderAll() {
+    restaurantState.forEach(renderRestaurant);
+  }
+
+  // ============================================================
+  // POLLING LOOPS
+  // ============================================================
+  async function fetchAllRestaurants() {
+    let anyError = false;
+    await Promise.all(restaurantState.map(async rs => {
+      // Disabled restaurants (no confirmed restaurantId/company yet)
+      // never hit the network — skip them entirely.
+      if (!rs.config.enabled) return;
+
+      try {
+        const orders = await getOrders(rs.config);
+        rs.readyOrders = getReadyOrders(orders, rs.config.showServed);
+        rs.cookingOrders = getCookingOrders(orders);
+        rs.error = null;
+      } catch (err) {
+        rs.error = err.message;
+        anyError = true;
+      }
+    }));
+    statusEl.textContent = anyError
+      ? "Sist oppdatert " + new Date().toLocaleTimeString("no-NO") + " (noen feil)"
+      : "Sist oppdatert " + new Date().toLocaleTimeString("no-NO");
+    renderAll();
+  }
+
+  buildCards();
+  fetchAllRestaurants();
+  setInterval(fetchAllRestaurants, FETCH_INTERVAL_MS);
+  setInterval(renderAll, TICK_INTERVAL_MS);
+</script>
+
+</body>
+</html>
